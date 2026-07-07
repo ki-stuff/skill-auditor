@@ -1,5 +1,11 @@
 # 🛡️ Skill-Auditor
 
+## 🇩🇪 Kurzbeschreibung
+
+Ein Claude-Code-Skill, der *andere* Skills vor der Installation prüft. Man gibt ihm ein Skill-Verzeichnis (von GitHub, ClawdHub oder unbekannter Quelle), er führt einen automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch — gegen Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und Social Engineering. Ergebnis: eine strukturierte Erstbewertung (🟢/🟡/🔴), kein Ersatz für ein vollständiges Security-Review. Details zu Funktionsumfang, Einschränkungen und Changelog: siehe unten.
+
+---
+
 A Claude Code / Claude coding-agent skill that vets *other* skills before you
 install them. Point it at a skill directory (from GitHub, ClawdHub, or any
 unknown source) and it runs a structured security review: an automated
