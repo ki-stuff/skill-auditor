@@ -1,6 +1,6 @@
 ---
 name: skill-auditor
-description: Use when vetting any new, external, or unknown skill before installation. Scans for prompt injection, data exfiltration, privilege escalation, persistence, and social engineering. Always run before installing skills from GitHub, ClawdHub, or unknown sources.
+description: Use when vetting any new, external, or unknown skill before installation. Scans for prompt injection, data exfiltration, privilege escalation, persistence, and social engineering. Always run before installing skills from GitHub, ClawdHub, or unknown sources. Also use when the user wants an overview/inventory/dashboard of all their installed skills, e.g. "which skills do I have installed", "skill inventory", "skill overview", "audit all my skills".
 ---
 
 # Skill-Auditor
@@ -152,6 +152,58 @@ Scope: Minimal / Akzeptabel / Übermäßig / Gefährlich
 [Verwenden / Mit Anpassungen verwenden / Nicht verwenden]
 [1-2 Sätze Begründung]
 ```
+
+---
+
+## Inventar-Modus (Phase 7)
+
+Auslöser: der Nutzer will einen Überblick über alle installierten Skills ("welche Skills habe ich?", "Skill-Übersicht", "Skill-Dashboard", "Sicherheitsstatus aller Skills").
+
+Das ist ein eigener Modus, kein Ersatz für Phase 0–6 — hier wird nicht ein einzelner neuer Skill vor der Installation geprüft, sondern der bereits installierte Bestand ausgewertet und dargestellt.
+
+### 7.1 Rohdaten sammeln
+
+```bash
+python3 <pfad-zu-diesem-skill-ordner>/scripts/audit.py --inventory --output <temp-pfad>/skill-inventory-raw.json
+```
+
+Das Script scannt `~/.claude/skills/` (manuell installierte Skills) und, über `~/.claude/plugins/installed_plugins.json`, alle aktiven Marketplace-Plugins. Für jeden Skill liefert es Name, Description und — falls vorhanden — den Status aus einem früheren Audit (`audit-result.json` im jeweiligen Ordner):
+
+- `safe` (🟢), `caution` (🟡), `reject` (🔴) — aus einem früheren Auditor-Lauf
+- `plugin` (🔵) — Marketplace-Plugin, kein eigener Scan nötig (offizieller Vertriebsweg)
+- `unaudited` (⚪) — noch nie durch diesen Auditor gelaufen
+
+Die Kategorisierung nach Thema/Zweck macht das Script bewusst NICHT — das ist Mustererkennung über natürlichsprachliche Beschreibungen und gehört dir als LLM, nicht dem Scanner.
+
+### 7.2 Thematische Kategorisierung
+
+Lies alle `description`-Felder aus der Rohdaten-Datei und bilde 4–8 sinnvolle thematische Kategorien (z. B. anhand von Zweck/Zielgruppe des Skills — nicht anhand der Namen). Das ist bei jedem Nutzer anders, es gibt keine feste Kategorienliste.
+
+Ergebnis in `<skill-ordner>/skill-inventory-cache.json` zwischenspeichern (Schema: `{"<skill-name>": {"category": "...", "hash": "<kurzer Hash der description>"}}`). Bei künftigen Läufen: nur Skills neu kategorisieren, deren `description`-Hash sich geändert hat oder die neu hinzugekommen sind — nicht den gesamten Bestand neu einordnen.
+
+### 7.3 Hybrid-Rückfrage zu ungeprüften Skills
+
+Wenn es Skills mit Status `unaudited` gibt, aktiv nachfragen:
+
+> "N Skills sind noch nicht geprüft. Jetzt Audit nachholen (Phase 1–2 je Skill), nur eine Auswahl, oder ohne Nachholen fortfahren?"
+
+Bei "ja": Phase 1–2 für jeden ungeprüften Skill durchlaufen (schreibt wie gewohnt `audit-result.json` in den jeweiligen Skill-Ordner), Status danach aktualisieren. Marketplace-Plugins (Status `plugin`) werden nie automatisch nachgeprüft — fremd verwalteter Ordner, offizieller Vertriebsweg.
+
+### 7.4 Speicherort aktiv erfragen
+
+Nie stillschweigend in ein Verzeichnis schreiben. Vorschlagen, aber bestätigen lassen:
+
+> "Wohin soll ich die Übersicht speichern? Vorschlag: aktuelles Arbeitsverzeichnis, Dateiname `skill-inventory-<Datum>.html`."
+
+### 7.5 HTML-Dashboard erzeugen
+
+Design-Vorlage: `scripts/inventory_template.html` (im Ordner dieses Skills) — zeigt Struktur und Stil (dunkles Karten-Layout, nach Kategorie gruppiert, Status-Badge pro Karte, Footer-Link). Das ist ein Stil-Referenz, keine Datei zum Ausfüllen per Script — schreibe die finale HTML-Datei direkt mit den echten Kategorien/Skills/Status aus 7.1–7.3, im gleichen visuellen Stil.
+
+Pflichtbestandteile:
+- Pro Kategorie ein Abschnitt/Karten-Gruppe
+- Pro Skill: Name, Kurzbeschreibung, Status-Badge (🟢/🟡/🔴/🔵/⚪)
+- Footer mit Link auf `https://github.com/ki-stuff/skill-auditor` ("Erstellt mit skill-auditor")
+- Keine nutzerspezifischen Elemente (keine fest verdrahteten Fonts/Domains/Pfade eines einzelnen Nutzers) — der Skill läuft bei beliebigen Nutzern
 
 ---
 

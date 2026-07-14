@@ -1,5 +1,16 @@
 # Changelog: skill-auditor
 
+## v2.2 — 2026-07-13 — Inventar-Modus
+
+Neue Funktion: Überblick über alle installierten Skills mit Security-Status, thematischer Kategorisierung und HTML-Dashboard.
+
+- **`SKILL.md`**: Neue Phase 7 "Inventar-Modus". Scannt installierte Skills, fragt bei ungeprüften Skills aktiv nach (Audit nachholen ja/nein), fragt aktiv nach dem Speicherort — nie stillschweigend schreiben.
+- **`scripts/audit.py`**: Neuer CLI-Modus `--inventory [--output <pfad>]`. Sammelt manuell installierte Skills (`~/.claude/skills/`) und aktive Marketplace-Plugins (über `~/.claude/plugins/installed_plugins.json`), liest Name/Description aus dem Frontmatter und den Status aus vorhandenen `audit-result.json`-Dateien. Liefert nur Rohdaten als JSON — die thematische Kategorisierung übernimmt Claude beim Ausführen, da das semantisches Verständnis der Beschreibungen erfordert, kein Pattern-Matching.
+- **`write_json_report()`**: Feld `audited_at` (Zeitstempel) ergänzt, fehlte bisher.
+- **`scripts/inventory_template.html`** (neu): Stil-Referenz für das HTML-Dashboard (dunkles/helles Karten-Layout, nach Kategorie gruppiert, Status-Badges, Footer-Link zum Repo). Wird nicht automatisch befüllt, sondern von Claude als Vorlage für den echten Output verwendet.
+- Bugfix in `scan_file()`: Exception-Handler beim Dateilesen gab `findings, urls` zurück (`urls` war eine nicht mehr existierende Variable aus einer älteren Version) — hätte bei nicht lesbaren Dateien zum Absturz geführt. Jetzt korrekt `findings`.
+- Bugfix in `parse_frontmatter()`: YAML-Block-Scalars (`description: |` mit eingerückten Folgezeilen, z. B. bei mehreren offiziellen Plugin-Skills) wurden bisher nicht erkannt und lieferten eine leere Description.
+
 ## v2.1 — 2026-07-07 — Merge & Community-Release
 
 Zwei parallel existierende Kopien (eine ältere v1.0-Version, eine aktuellere v2.0-Version) wurden zu einer einzigen Quelle zusammengeführt und als eigenständiges Repo veröffentlicht.

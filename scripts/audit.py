@@ -8,6 +8,7 @@ import sys
 import os
 import re
 import json
+import datetime
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
@@ -254,7 +255,7 @@ def scan_file(filepath: Path, skill_dir: Path) -> list[Finding]:
     try:
         content = filepath.read_text(encoding="utf-8", errors="replace")
     except Exception:
-        return findings, urls
+        return findings
 
     lines = content.splitlines()
     is_md = filepath.suffix.lower() == ".md"
@@ -329,6 +330,160 @@ def audit_skill(skill_path: str) -> SkillAuditResult:
     result.findings.sort(key=lambda f: (RISK_ORDER.get(f.risk, 99), f.file, f.line))
     return result
 
+# ─── Inventar-Modus ──────────────────────────────────────────────────────────
+# Sammelt alle installierten Skills (manuell + Marketplace-Plugins) mit
+# Metadata und vorhandenem Audit-Status. Liefert nur Rohdaten als JSON —
+# die thematische Kategorisierung und die HTML-Ausgabe übernimmt Claude
+# beim Ausführen des Skills, da das semantisches Verständnis der jeweiligen
+# Skill-Beschreibung erfordert und kein Pattern-Matching ist.
+
+DEFAULT_SKILLS_DIR = Path.home() / ".claude" / "skills"
+DEFAULT_PLUGINS_FILE = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+
+
+def find_skill_md(skill_dir: Path) -> Optional[Path]:
+    for candidate in ("SKILL.md", "skill.md"):
+        p = skill_dir / candidate
+        if p.exists():
+            return p
+    return None
+
+
+def parse_frontmatter(md_path: Path) -> dict:
+    """Liest 'name:' und 'description:' aus dem YAML-Frontmatter einer SKILL.md."""
+    meta = {"name": md_path.parent.name, "description": ""}
+    try:
+        text = md_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return meta
+    if not text.lstrip().startswith("---"):
+        return meta
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return meta
+
+    lines = parts[1].splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if ":" not in line:
+            i += 1
+            continue
+        key, _, value = line.partition(":")
+        key = key.strip().lower()
+        value = value.strip()
+        if key in ("name", "description") and value in ("|", ">"):
+            # YAML block scalar: following indented lines are the value.
+            block = []
+            i += 1
+            while i < len(lines) and (lines[i].startswith((" ", "\t")) or not lines[i].strip()):
+                block.append(lines[i].strip())
+                i += 1
+            value = " ".join(l for l in block if l)
+            if key == "name":
+                meta["name"] = value
+            else:
+                meta["description"] = value
+            continue
+        value = value.strip('"').strip("'")
+        if key == "name" and value:
+            meta["name"] = value
+        elif key == "description" and value:
+            meta["description"] = value
+        i += 1
+    return meta
+
+
+def load_audit_status(skill_dir: Path) -> dict:
+    """Liest ein vorhandenes audit-result.json, falls vorhanden."""
+    report = skill_dir / "audit-result.json"
+    if not report.exists():
+        return {"status": "unaudited", "verdict": None, "audited_at": None}
+    try:
+        data = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"status": "unaudited", "verdict": None, "audited_at": None}
+    risk = data.get("max_risk", "NONE")
+    if risk == "CRITICAL" or "REJECT" in (data.get("overall_risk") or ""):
+        status = "reject"
+    elif risk in ("HIGH", "MEDIUM"):
+        status = "caution"
+    else:
+        status = "safe"
+    return {
+        "status": status,
+        "verdict": data.get("overall_risk"),
+        "audited_at": data.get("audited_at"),
+    }
+
+
+def scan_installed_skills(skills_dir: Path = DEFAULT_SKILLS_DIR,
+                           plugins_file: Path = DEFAULT_PLUGINS_FILE) -> list[dict]:
+    """Sammelt alle manuell installierten Skills + Plugin-Skills mit Metadata und Audit-Status."""
+    entries = []
+
+    if skills_dir.exists():
+        for skill_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
+            md = find_skill_md(skill_dir)
+            if not md:
+                continue
+            meta = parse_frontmatter(md)
+            audit = load_audit_status(skill_dir)
+            entries.append({
+                "name": meta["name"],
+                "description": meta["description"],
+                "path": str(skill_dir),
+                "source": "manual",
+                **audit,
+            })
+
+    if plugins_file.exists():
+        try:
+            installed = json.loads(plugins_file.read_text(encoding="utf-8")).get("plugins", {})
+        except (OSError, json.JSONDecodeError):
+            installed = {}
+        for plugin_key, installs in installed.items():
+            plugin_name = plugin_key.split("@")[0]
+            for install in installs:
+                install_path = Path(install.get("installPath", ""))
+                skills_root = install_path / "skills"
+                if not skills_root.exists():
+                    continue
+                for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+                    md = find_skill_md(skill_dir)
+                    if not md:
+                        continue
+                    meta = parse_frontmatter(md)
+                    entries.append({
+                        "name": meta["name"],
+                        "description": meta["description"],
+                        "path": str(skill_dir),
+                        "source": f"plugin:{plugin_name}",
+                        "status": "plugin",
+                        "verdict": "🔵 MARKETPLACE-PLUGIN",
+                        "audited_at": None,
+                    })
+
+    return entries
+
+
+def write_inventory_json(entries: list[dict], output_path: Path) -> None:
+    output_path.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def print_inventory_summary(entries: list[dict]) -> None:
+    total = len(entries)
+    unaudited = sum(1 for e in entries if e.get("status") == "unaudited")
+    caution = sum(1 for e in entries if e.get("status") == "caution")
+    reject = sum(1 for e in entries if e.get("status") == "reject")
+    plugins = sum(1 for e in entries if e.get("status") == "plugin")
+    print(f"Skills gefunden: {total}")
+    print(f"  🟢 unbedenklich:   {total - unaudited - caution - reject - plugins}")
+    print(f"  🟡 Hinweise:       {caution}")
+    print(f"  🔴 nicht verwenden: {reject}")
+    print(f"  🔵 Plugins:        {plugins}")
+    print(f"  ⚪ nicht geprüft:   {unaudited}")
+
 # ─── Report-Ausgabe ──────────────────────────────────────────────────────────
 
 def print_report(result: SkillAuditResult) -> None:
@@ -379,6 +534,7 @@ def write_json_report(result: SkillAuditResult) -> Optional[Path]:
         "path": result.skill_path,
         "overall_risk": result.verdict,
         "max_risk": result.max_risk,
+        "audited_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "files_scanned": result.files_scanned,
         "total_findings": len(result.findings),
         "findings": [
@@ -423,8 +579,22 @@ def print_batch_summary(results: list[SkillAuditResult]) -> None:
 def main():
     if len(sys.argv) < 2:
         print("Verwendung: python audit.py <skill-verzeichnis> [skill-verzeichnis2 ...]")
+        print("            python audit.py --inventory [--output <pfad>]")
         print("Beispiel:   python audit.py C:/Users/ss/.claude/skills/some-skill")
         sys.exit(1)
+
+    if sys.argv[1] == "--inventory":
+        output_path = Path("skill-inventory-raw.json")
+        args = sys.argv[2:]
+        if "--output" in args:
+            idx = args.index("--output")
+            if idx + 1 < len(args):
+                output_path = Path(args[idx + 1])
+        entries = scan_installed_skills()
+        write_inventory_json(entries, output_path)
+        print(f"Rohdaten geschrieben: {output_path}")
+        print_inventory_summary(entries)
+        sys.exit(0)
 
     skill_paths = sys.argv[1:]
     results = []

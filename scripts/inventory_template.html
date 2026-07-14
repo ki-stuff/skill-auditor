@@ -1,0 +1,122 @@
+<!--
+  Stil-Referenz fuer den Inventar-Modus (Phase 7) von skill-auditor.
+  Das ist KEINE Datei, die ein Script automatisch befuellt -- Claude schreibt
+  die finale HTML-Datei direkt, mit den echten Kategorien/Skills/Status aus
+  Phase 7.1-7.3, im selben visuellen Stil wie hier gezeigt.
+
+  Prinzipien:
+  - Komplett selbstenthalten: keine externen Fonts, keine CDNs, kein Netzwerk-
+    Zugriff (waere sonst ein Fund im eigenen Scanner -- Ironie vermeiden).
+  - Systemfonts statt fest verdrahteter Fonts eines einzelnen Nutzers.
+  - Hell/Dunkel ueber prefers-color-scheme, keine Abhaengigkeit von einem
+    bestimmten Branding.
+-->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill-Inventar</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --border: #e0e3e9;
+    --text: #1a1f2e;
+    --text-muted: #5a6478;
+    --accent: #4a5578;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1f2e;
+      --card-bg: #232939;
+      --border: #2e3650;
+      --text: #e8ebf2;
+      --text-muted: #8f9dba;
+      --accent: #9fb0e0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem 1.25rem 4rem;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  h1 { font-size: 1.75rem; margin: 0 0 0.4rem; }
+  header p { color: var(--text-muted); margin: 0; font-size: 0.9rem; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+  .category { margin-bottom: 2.25rem; }
+  .category h2 { font-size: 1.1rem; margin: 0 0 0.9rem; display: flex; align-items: baseline; gap: 0.5rem; }
+  .category h2 .count { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.9rem; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    padding: 1.1rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.4rem; }
+  .card h3 { font-size: 0.95rem; margin: 0; }
+  .badge { font-size: 0.85rem; flex-shrink: 0; }
+  .card p { font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4; }
+
+  footer { text-align: center; margin-top: 3rem; font-size: 0.8rem; color: var(--text-muted); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Skill-Inventar</h1>
+    <p>Stand: [DATUM] · [ANZAHL] installierte Skills</p>
+    <div class="legend">
+      <span>🟢 unbedenklich</span>
+      <span>🟡 Hinweise beachten</span>
+      <span>🔴 nicht verwenden</span>
+      <span>🔵 Marketplace-Plugin</span>
+      <span>⚪ nicht geprüft</span>
+    </div>
+  </header>
+
+  <!-- Pro thematischer Kategorie ein Block. Kategorien und Zuordnung werden
+       von Claude aus den echten Skill-Descriptions abgeleitet, nicht fest
+       vorgegeben. -->
+  <div class="category">
+    <h2>[Kategorie-Name] <span class="count">[N] Skills</span></h2>
+    <div class="grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>[skill-name]</h3>
+          <span class="badge">🟢</span>
+        </div>
+        <p>[Kurzbeschreibung aus der Skill-Description, 1-2 Sätze]</p>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>[skill-name]</h3>
+          <span class="badge">⚪</span>
+        </div>
+        <p>[Kurzbeschreibung]</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Erstellt mit <a href="https://github.com/ki-stuff/skill-auditor">skill-auditor</a>
+  </footer>
+
+</div>
+</body>
+</html>
