@@ -33,11 +33,23 @@ PATTERNS = {
             (r"\baxios\b",                        "axios"),
             (r"XMLHttpRequest",                   "XHR"),
         ],
+        # Beide Seiten der Kombi-Regex nutzen dieselben Wortgrenzen wie die
+        # "patterns"-Liste oben (\bcurl\b, requests\.(get|post|...), etc.) statt
+        # loser Bare-Words - sonst matcht z. B. "unformed requests only" als
+        # Netzwerkaufruf. "token"/"secret" bleiben bewusst ohne \b, weil sie so
+        # auch UNTERSTRICH-geschriebene Env-Var-Namen wie SECRET_TOKEN treffen
+        # (\b wuerde davor keine Wortgrenze finden, da "_" ein Wortzeichen ist);
+        # Bindestrich-Komposita wie "brand-token" bleiben ein bekanntes Restrisiko
+        # fuer False Positives - das faengt Phase 4 (manuelle Pruefung) ab, nicht
+        # der Scanner (siehe SKILL.md "Wann NICHT aktivieren"-Philosophie: lieber
+        # ein Feature/Praezision weglassen als ein irrefuehrendes Signal geben).
         "reject_if": [
-            r"(~/.ssh|~/.aws|\.env|api_key|password|token|secret).*?(curl|fetch|requests|urllib|wget)",
-            r"(curl|fetch|requests|urllib|wget).*(~/.ssh|~/.aws|\.env|api_key|password|token|secret)",
-            r"base64\.(encode|b64encode).*?(send|post|upload|curl|fetch)",
-            r"whoami|hostname.*?(curl|fetch|post|send)",
+            r"(~/.ssh|~/.aws|\.env\b|\bapi[_-]?key\b|\bpassword\b|token|secret).*?"
+            r"(\bcurl\b|fetch\(|requests\.(get|post|put|delete)|\burllib\b|\bwget\b)",
+            r"(\bcurl\b|fetch\(|requests\.(get|post|put|delete)|\burllib\b|\bwget\b).*?"
+            r"(~/.ssh|~/.aws|\.env\b|\bapi[_-]?key\b|\bpassword\b|token|secret)",
+            r"base64\.(encode|b64encode).*?(\bsend\b|\bpost\b|\bupload\b|\bcurl\b|fetch\()",
+            r"\b(whoami|hostname)\b.*?(\bcurl\b|fetch\(|\bpost\b|\bsend\b)",
         ],
     },
     "B_ENCODING": {
@@ -49,7 +61,7 @@ PATTERNS = {
             (r"String\.fromCharCode",             "fromCharCode"),
             (r"\\x[0-9a-fA-F]{2}",               "Hex-Escape"),
             (r"\\u[0-9a-fA-F]{4}",               "Unicode-Escape"),
-            (r"eval\s*\(",                        "eval()"),
+            (r"\beval\s*\(",                       "eval()"),
         ],
         "reject_if": [],
     },
@@ -65,8 +77,8 @@ PATTERNS = {
             (r"compile\s*\(.*eval",               "compile+eval"),
         ],
         "reject_if": [
-            r"curl\s*\|+\s*bash",
-            r"wget\s*\|+\s*sh",
+            r"\bcurl\s*\|+\s*bash",
+            r"\bwget\s*\|+\s*sh",
         ],
     },
     "D_PACKAGES": {
@@ -82,7 +94,7 @@ PATTERNS = {
         ],
         "reject_if": [
             r"PATH\s*=.*\$PATH",
-            r"(crontab|cron\.d|LaunchAgents|launchctl)",
+            r"\b(crontab|cron\.d|LaunchAgents|launchctl)\b",
             r"\.(bashrc|zshrc|profile|bash_profile)\s*>>",
         ],
     },
@@ -128,10 +140,10 @@ PATTERNS = {
             (r"~/.ssh",                           "SSH-Verzeichnis"),
             (r"~/.aws",                           "AWS Credentials"),
             (r"\.env\b",                          ".env Datei"),
-            (r"api_key|apikey|api-key",           "API Key Zugriff"),
-            (r"password|passwd|passwort",         "Passwort-Zugriff"),
-            (r"secret[_\s]key|secret_token",     "Secret Token"),
-            (r"private_key|privatekey",           "Private Key"),
+            (r"\bapi[_-]?key\b",                  "API Key Zugriff"),
+            (r"\bpassword\b|\bpasswd\b|\bpasswort\b", "Passwort-Zugriff"),
+            (r"\bsecret[_\s]key\b|\bsecret_token\b", "Secret Token"),
+            (r"\bprivate[_-]?key\b",              "Private Key"),
         ],
         "reject_if": [],
     },
@@ -205,9 +217,18 @@ class SkillAuditResult:
 
 # ─── Scanner ─────────────────────────────────────────────────────────────────
 
+# Eigene Output-Artefakte, die kein wiederholter Scan-Lauf als Input fressen
+# darf - sonst matcht der Scanner auf seinen eigenen vorherigen Findings (z. B.
+# der Text "REJECT-Pattern: (...curl|fetch|requests...)" landet als Snippet in
+# audit-result.json und wird beim naechsten Lauf selbst wieder als Treffer gezaehlt).
+OWN_ARTIFACT_FILES = {"audit-result.json", "skill-inventory-cache.json", "skill-inventory-raw.json"}
+
+
 def collect_files(skill_dir: Path) -> list[Path]:
     files = []
     for f in skill_dir.rglob("*"):
+        if f.name in OWN_ARTIFACT_FILES:
+            continue
         if f.is_file() and f.suffix.lower() in READABLE_EXTENSIONS:
             files.append(f)
     return sorted(files)
