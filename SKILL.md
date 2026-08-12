@@ -32,6 +32,14 @@ Bevor die Dateien gelesen werden:
 5. Skills die Credentials anfragen — immer Freigabe durch den Nutzer
 6. Skills die Agent-Config ändern — immer Freigabe durch den Nutzer
 
+**Optionaler skills.sh-Badge-Check:**
+
+Wenn sich der zu prüfende Skill einer skills.sh-Seite zuordnen lässt (Schema `https://skills.sh/{org}/{repo}/{skill-name}` — z. B. weil der Nutzer die URL mitgibt oder GitHub-Org/Repo/Skill-Name bekannt sind), per WebFetch die Badge-Seite abrufen und den Status von Socket, Snyk und Gen Agent Trust Hub notieren.
+
+Das ist ein **Zusatzsignal, keine Entscheidungsgrundlage**: Die dort eingebundenen Scanner hatten nachweislich False Positives (z. B. Snyk E005 bei Skills, die URL-Muster nur als Erkennungs-Regex referenzieren statt sie auszuführen) und wurden laut Trail-of-Bits-Research auch schon umgangen. Bei einem Snyk-Fail zuerst den eigenen Codefence-Filter (Phase 3) gegenprüfen, bevor eskaliert wird — Muster in Markdown-Codefences sind meist Dokumentationsbeispiele, keine live ausgeführten Regeln. Kein skills.sh-Eintrag auffindbar → einfach weglassen, kein Blocker für den restlichen Audit.
+
+Ergebnis in Phase 6 unter "Zusatzsignal skills.sh" aufnehmen.
+
 ---
 
 ### Phase 1: Alle Dateien lesen
@@ -134,6 +142,7 @@ CLAUDE\.md|MEMORY\.md|SOUL\.md|IDENTITY\.md
 **Autor:** [Username oder "unbekannt"]
 **Geprüfte Dateien:** [Anzahl / Liste]
 **Gesamtbewertung:** 🟢 Unbedenklich | 🟡 Hinweise | 🔴 Nicht verwenden
+**Zusatzsignal skills.sh:** [Socket/Snyk/Trust Hub Status oder "nicht verfügbar / keine skills.sh-Seite gefunden"] — Zusatzsignal, kein Ersatz für die Findings unten
 
 ### Befunde
 
