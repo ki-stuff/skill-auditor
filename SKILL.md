@@ -1,6 +1,6 @@
 ---
 name: skill-auditor
-description: Use when vetting any new, external, or unknown skill before installation. Scans for prompt injection, data exfiltration, privilege escalation, persistence, and social engineering. Always run before installing skills from GitHub, ClawdHub, or unknown sources. Also use when the user wants an overview/inventory/dashboard of all their installed skills, e.g. "which skills do I have installed", "skill inventory", "skill overview", "audit all my skills".
+description: Use when vetting a new, external, or unknown Claude Code / coding-agent skill (a SKILL.md-based package) before installing or trusting it. Scans for prompt injection, data exfiltration, privilege escalation, persistence, and social engineering. Always run before installing skills from GitHub, ClawdHub, skills.sh, or any other unknown source — including via `npx skills add`. Also use when the user wants an overview/inventory/dashboard of all their installed skills, e.g. "which skills do I have installed", "skill inventory", "skill overview", "audit all my skills", "security status of my skills". Not for reviewing application code for vulnerabilities (OWASP-style code review) — that's a different task.
 ---
 
 # Skill-Auditor
