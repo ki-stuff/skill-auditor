@@ -1,5 +1,18 @@
 # Changelog: skill-auditor
 
+## v2.4 — 2026-08-12 — Scanner-Bugfix: Wortgrenzen in REJECT-Mustern
+
+Beim ersten vollen Inventar-Lauf (Phase 7, 180 Skills) fielen 5 False-Positive-🔴-REJECT-Verdikte auf (komplette hyperframes-Familie + media-use). Ursache in `scripts/audit.py`:
+
+- `eval\s*\(` ohne führende `\b` matchte `retrieval (` — "eval" als Substring in "retrieval", nicht als eigenständiger Aufruf.
+- Die REJECT-Kombinationsmuster in Kategorie A_NETWORK nutzten lose Bare-Words (`curl|fetch|requests|urllib|wget`, `token|secret|...`) statt der bereits korrekt skalierten Patterns aus der eigenen `patterns`-Liste — dadurch wertete der Scanner z. B. "unformed requests only" (Fließtext) als Netzwerkaufruf.
+- `whoami|hostname.*?(curl|fetch|post|send)` hatte einen Gruppierungsfehler ohne Klammern — das bloße Wort `whoami` allein löste bereits ein REJECT aus, unabhängig vom Rest der Zeile.
+- `collect_files()` sammelte auch die eigenen Output-Artefakte (`audit-result.json`, `skill-inventory-*.json`) als Scan-Input ein — ein wiederholter Lauf vergiftete sich dadurch mit den eigenen vorherigen Findings-Snippets.
+
+Fix: `\b`-Wortgrenzen an den betroffenen Stellen ergänzt (`eval`, curl/wget/urllib/requests/fetch in der Kombi-Logik, crontab/LaunchAgents, api_key/password/private_key), Gruppierungsfehler bei whoami/hostname behoben, eigene Artefaktdateien von `collect_files()` ausgeschlossen. `token`/`secret` bleiben bewusst ohne `\b` (sonst keine Erkennung von Unterstrich-Env-Var-Namen wie `SECRET_TOKEN` mehr) — Bindestrich-Komposita wie `brand-token` (Design-Token-Terminologie) bleiben ein bekanntes, akzeptiertes Restrisiko für Phase 4 (manuelle Prüfung), kein Scanner-fixbares Problem.
+
+Verifiziert gegen die 5 ursprünglich betroffenen Skills (3 vollständig behoben, 2 weiterhin korrekt als 🟡/🔴 markiert — aus anderen, legitimen Gründen: Design-Token-Terminologie bzw. Dateinamens-Kollision mit `MEMORY.md`) sowie gegen vier synthetische Angriffsmuster (unverändert erkannt).
+
 ## v2.3 — 2026-08-12 — skills.sh-Abgleich
 
 Abgleich gegen den aktuellen Stand von skills.sh (Vercel) und getsentry/skills; Ergebnis in drei Änderungen.
