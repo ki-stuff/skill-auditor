@@ -255,6 +255,19 @@ Gesamt: X Skills | Y Flags | Z Rejections
 
 ---
 
+## Bekannte False-Positive-Muster
+
+Aus realen Audit-Läufen bekannte Muster, die der automatische Scanner (Phase 2) zuverlässig als 🔴/CRITICAL meldet, die sich bei der manuellen Phase-4-Prüfung aber wiederholt als harmlos herausgestellt haben. Kein Grund, den Scanner-Fund zu ignorieren — aber ein Grund, in Phase 4 gezielt nachzuschauen, bevor man das REJECT übernimmt:
+
+| Muster | Beispiel | Warum False Positive | Scanner-fixbar? |
+|--------|----------|-----------------------|------------------|
+| Design-Token-Terminologie | `brand-token`, `{{bg}}`/`{{fg}}`-Platzhalter, "Color Token" | "Token" ist in Design-System-/CSS-Sprache ein Standardbegriff (Farb-, Spacing-, Typografie-Werte), kein Secret — kombiniert mit irgendeinem Netzwerk-Wort im selben File löst das trotzdem die REJECT-Kombi-Logik aus | Nein — `token`/`secret` bleiben in `audit.py` bewusst ohne `\b`, sonst geht die Erkennung von unterstrich-geschriebenen Env-Var-Namen wie `SECRET_TOKEN` verloren |
+| Eigene Referenzdatei gleichen Namens | Ein Skill hat eine eigene `references/memory.md` (z. B. für "gemerkte Nutzerpräferenzen") | Matcht das Pattern für Claudes globale `MEMORY.md`, ist aber eine skill-eigene Datei ohne jeden Bezug zum globalen Memory-System | Nein — das Pattern prüft nur den Dateinamen, nicht ob der Pfad innerhalb des eigenen Skill-Ordners liegt oder auf `~/.claude/`/Projekt-Root zielt |
+| Harmloser `curl`/`fetch` gegen eine öffentliche oder lokale Adresse | `curl https://fonts.google.com/...` (öffentliche API, kein Auth), `curl http://localhost:PORT/...` (Health-Check gegen den eigenen Preview-Server) | Netzwerkaufruf ist real, aber es wird nichts Geheimes gelesen und nirgendwohin exfiltriert — Ziel ist öffentlich bzw. lokal | Teilweise — Wortgrenzen-Bugs sind gefixt (v2.4), aber der Scanner kann nicht bewerten, ob eine URL "vertrauenswürdig" ist; das bleibt Phase-4-Aufgabe |
+| Substring-Kollision mit englischen Wörtern | "retrieval" enthält `eval(`, "unformed requests only" enthält `requests` | Bare-Word-Regex ohne Wortgrenzen matcht Teilstrings in unrelated Wörtern | Ja — in v2.4 gefixt (`\b` ergänzt, network-Keywords in der REJECT-Kombi auf die bereits korrekt skalierten Patterns umgestellt) |
+
+---
+
 **Hinweis:** Dieser Audit ist pragmatische Erstprüfung, kein vollständiges Security-Review. Bei Zweifeln: Skill nicht installieren, Nutzer informieren.
 
 Audit-Script: `scripts/audit.py` (relativ zum Ordner dieses Skills — Pfad aus dem eigenen Ladeort ableiten, nicht fest verdrahten)
