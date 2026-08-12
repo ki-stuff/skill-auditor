@@ -2,7 +2,7 @@
 
 ## 🇩🇪 Kurzbeschreibung
 
-Ein Claude-Code-Skill, der *andere* Skills vor der Installation prüft. Man gibt ihm ein Skill-Verzeichnis (von GitHub, ClawdHub oder unbekannter Quelle), er führt einen automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch — gegen Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und Social Engineering. Ergebnis: eine strukturierte Erstbewertung (🟢/🟡/🔴), kein Ersatz für ein vollständiges Security-Review. Seit v2.2 zusätzlich ein Inventar-Modus: eine Übersicht über alle bereits installierten Skills, thematisch kategorisiert, mit Security-Status je Skill und als HTML-Dashboard. Details zu Funktionsumfang, Einschränkungen und Changelog: siehe unten.
+Ein Claude-Code-Skill, der *andere* Skills vor der Installation prüft. Man gibt ihm ein Skill-Verzeichnis (von GitHub, ClawdHub, skills.sh oder unbekannter Quelle), er führt einen automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch — gegen Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und Social Engineering. Ergebnis: eine strukturierte Erstbewertung (🟢/🟡/🔴), kein Ersatz für ein vollständiges Security-Review. Nicht zu verwechseln mit `getsentry/skills` → `security-review` (prüft eigenen Anwendungscode, keine fremden Skills) — der vergleichbare Skill dort heißt `skill-scanner`. Der eigentliche Unterschied zu vergleichbaren Scannern: seit v2.2 ein Inventar-Modus — eine Übersicht über alle bereits installierten Skills, thematisch kategorisiert, mit Security-Status je Skill und als HTML-Dashboard. Details zu Funktionsumfang, Einschränkungen und Changelog: siehe unten.
 
 ---
 
@@ -16,9 +16,10 @@ Built for one problem: skills are prompt-driven, some ship scripts, and both
 can be adversarial. This gives you a repeatable first pass before you ever
 run one.
 
-Since v2.2 it also has an **inventory mode**: instead of vetting one new
-skill, it surveys everything you already have installed and gives you a
-categorized, security-annotated dashboard of your whole skill set.
+Since v2.2 it also has an **inventory mode** — the main thing that sets it
+apart from comparable scanners: instead of vetting one new skill, it surveys
+everything you already have installed and gives you a categorized,
+security-annotated dashboard of your whole skill set.
 
 ## What it checks
 
@@ -42,6 +43,40 @@ for pattern *combinations* (e.g. reading `.ssh` **and** piping it to curl in
 the same file) that auto-fail regardless of individual pattern severity.
 Patterns inside markdown code fences are skipped for most categories — a
 regex shown as a documentation example isn't a live injection.
+
+## How this compares to similar tools
+
+Skill-vetting tools are easy to mix up. Two clarifications:
+
+- **This is not `getsentry/skills` → `security-review`.** That skill reviews
+  *your own application code* for OWASP-style vulnerabilities (SQLi, XSS,
+  auth bugs) — it doesn't look at third-party agent skills at all. The skill
+  in that same repo that does what this tool does is `skill-scanner`
+  (`npx skills add getsentry/skills --skill skill-scanner`): automated
+  pattern scan plus LLM intent review, functionally close to Phase 2–4 here.
+- **skills.sh badges are a signal, not a verdict.** skills.sh shows
+  Socket / Snyk / Gen Agent Trust Hub badges per skill page. Useful as a
+  second opinion (see Phase 0 in `SKILL.md`), but the underlying scanners
+  have documented false positives — e.g. Snyk flagging a URL-detection regex
+  as if it were a live network call — and have been shown to miss
+  deliberately obfuscated payloads. Treat a green badge as one data point,
+  not proof; a red one is worth cross-checking against this tool's own
+  codefence filter before you act on it.
+
+What technically sets this tool apart from comparable pattern scanners
+(including `skill-scanner`):
+
+- **`REJECT` combination logic** — certain pattern *pairs* (e.g. reading
+  `~/.ssh` **and** piping it to curl in the same file) auto-fail regardless
+  of each pattern's individual severity, catching intent that a
+  single-pattern scanner misses.
+- **Codefence masking** — patterns inside markdown code fences are excluded
+  from most categories, so a regex shown as a documentation example doesn't
+  get flagged as live code. This is the same class of false positive that
+  trips up the skills.sh Snyk badge.
+- **Inventory mode** (below) — a dashboard of your entire installed skill
+  set, not just a one-off check before installing something new. Neither the
+  common blog-post workflow nor `skill-scanner` has this.
 
 ## Inventory mode
 
