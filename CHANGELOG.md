@@ -1,5 +1,13 @@
 # Changelog: skill-auditor
 
+## v2.3 — 2026-08-12 — skills.sh-Abgleich
+
+Abgleich gegen den aktuellen Stand von skills.sh (Vercel) und getsentry/skills; Ergebnis in drei Änderungen.
+
+- **`SKILL.md`**: `description` präzisiert — "skill" jetzt explizit als "Claude Code / coding-agent skill (SKILL.md-based package)" gefasst (grenzt gegen generischen Sprachgebrauch und den `code-review`-Skill ab), skills.sh und `npx skills add` als bekannte Quellen ergänzt.
+- **`SKILL.md`**: Phase 0 um optionalen skills.sh-Badge-Check erweitert (Socket/Snyk/Gen Agent Trust Hub als Zusatzsignal, ausdrücklich keine alleinige Entscheidungsgrundlage — bekannte False-Positive-Muster bei Snyk, Scanner laut Trail-of-Bits-Research schon umgangen). Bei Snyk-Fail: erst eigenen Codefence-Filter gegenprüfen. Neues Report-Feld "Zusatzsignal skills.sh" in Phase 6.
+- **`README.md`**: neuer Abschnitt "How this compares to similar tools" — Abgrenzung zu `getsentry/skills` → `security-review` (häufige Verwechslung; das eigentliche Pendant dort heißt `skill-scanner`), REJECT-Kombinationslogik und Codefence-Masking als technische Differenzierung gegenüber reinen Pattern-Matchern, Inventar-Modus als Hauptunterschied stärker herausgestellt.
+
 ## v2.2 — 2026-07-13 — Inventar-Modus
 
 Neue Funktion: Überblick über alle installierten Skills mit Security-Status, thematischer Kategorisierung und HTML-Dashboard.
