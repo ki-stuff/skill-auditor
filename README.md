@@ -2,7 +2,26 @@
 
 ## 🇩🇪 Kurzbeschreibung
 
-Ein Claude-Code-Skill, der *andere* Skills vor der Installation prüft. Man gibt ihm ein Skill-Verzeichnis (von GitHub, ClawdHub, skills.sh oder unbekannter Quelle), er führt einen automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch — gegen Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und Social Engineering. Ergebnis: eine strukturierte Erstbewertung (🟢/🟡/🔴), kein Ersatz für ein vollständiges Security-Review. Nicht zu verwechseln mit `getsentry/skills` → `security-review` (prüft eigenen Anwendungscode, keine fremden Skills) — der vergleichbare Skill dort heißt `skill-scanner`. Der eigentliche Unterschied zu vergleichbaren Scannern: seit v2.2 ein Inventar-Modus — eine Übersicht über alle bereits installierten Skills, thematisch kategorisiert, mit Security-Status je Skill und als HTML-Dashboard. Details zu Funktionsumfang, Einschränkungen und Changelog: siehe unten.
+**Skills sind Prompts. Manche bringen Scripts mit. Beides kann feindlich
+sein — und beim Kopieren nach `~/.claude/skills/` prüft das niemand.**
+
+Der Skill-Auditor schließt genau diese Lücke: Er prüft *andere* Skills,
+bevor du sie installierst. Übergib ihm ein Skill-Verzeichnis — von GitHub,
+ClawdHub, skills.sh oder aus unbekannter Quelle — und er führt einen
+automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch: gegen
+Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und
+Social Engineering. Ergebnis ist eine strukturierte Erstbewertung
+(🟢 / 🟡 / 🔴), kein Ersatz für ein vollständiges Security-Review.
+
+Seit v2.2 zusätzlich ein **Inventar-Modus** — der eigentliche Unterschied
+zu vergleichbaren Scannern: eine Übersicht über *alle* bereits installierten
+Skills, thematisch kategorisiert, mit Security-Status je Skill und als
+HTML-Dashboard.
+
+> **Nicht verwechseln** mit `getsentry/skills` → `security-review` (prüft
+> eigenen Anwendungscode, nicht fremde Skills). Das Pendant dort heißt
+> `skill-scanner`. Details zur Abgrenzung: siehe
+> [How this compares](#how-this-compares-to-similar-tools).
 
 ---
 
@@ -43,6 +62,56 @@ for pattern *combinations* (e.g. reading `.ssh` **and** piping it to curl in
 the same file) that auto-fail regardless of individual pattern severity.
 Patterns inside markdown code fences are skipped for most categories — a
 regex shown as a documentation example isn't a live injection.
+
+## Example output
+
+Running the scanner against a directory produces a console report and a
+machine-readable `audit-result.json`:
+
+```
+$ python3 ~/.claude/skills/skill-auditor/scripts/audit.py ./awesome-seo-skill
+
+── Pattern scan ─────────────────────────────
+CRITICAL  scripts/setup.sh:14   secrets-access   ~/.ssh/id_rsa
+CRITICAL  scripts/setup.sh:15   exfiltration     curl -X POST …
+HIGH      scripts/setup.sh:3    code-execution   curl | bash
+MEDIUM    SKILL.md:88           obfuscation      base64 -d
+
+REJECT    Combination in setup.sh: secrets-access + exfiltration
+
+── Verdict ──────────────────────────────────
+🔴 Do not install. 2 critical · 1 high · 1 medium · 1 reject combination
+→ audit-result.json written
+→ Manual phases still open: provenance, content review, permission scope
+```
+
+The 🔴 verdict here is driven by the REJECT combination, not just the
+individual findings — reading a private key and piping it to curl in the
+same file auto-fails regardless of how each line would score alone.
+
+## The review workflow
+
+The scan is the fast, deterministic part. The phases around it are what a
+regex can't cover, and they're where most real judgment happens:
+
+- **Phase 0 — Provenance.** Where the skill comes from, who published it,
+  repo age, adoption. Optionally cross-check skills.sh trust badges (Socket /
+  Snyk / Gen Agent Trust Hub) as a *second* signal, never a verdict.
+- **Phase 1 — Inventory the files.** What's actually in the directory,
+  which files carry logic, which ship executable scripts.
+- **Phase 2 — Automated pattern scan.** `audit.py` over the whole tree,
+  eight categories, console report + `audit-result.json`.
+- **Phase 3 — Severity triage.** CRITICAL / HIGH / MEDIUM / REJECT, read in
+  context rather than taken at face value.
+- **Phase 4 — Content review.** Read the prompt text itself. Social
+  engineering has no greppable keywords — only phrasing that tells the agent
+  something different than it tells you.
+- **Phase 5 — Permission scope.** Does the skill actually need what it
+  touches? A text formatter with network access isn't a finding, but it's a
+  question.
+- **Phase 6 — Verdict.** 🟢 / 🟡 / 🔴 with locations, as a decision basis —
+  the decision stays with you.
+- **Phase 7 — Inventory mode.** Survey everything already installed (below).
 
 ## How this compares to similar tools
 
