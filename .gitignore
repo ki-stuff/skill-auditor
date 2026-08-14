@@ -1,3 +1,5 @@
 audit-result.json
+skill-inventory-cache.json
+skill-inventory-raw.json
 __pycache__/
 *.pyc
