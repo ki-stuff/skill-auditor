@@ -23,6 +23,11 @@ HTML-Dashboard.
 > `skill-scanner`. Details zur Abgrenzung: siehe
 > [How this compares](#how-this-compares-to-similar-tools).
 
+> **Nutzt du claude.ai oder Claude Desktop statt der Claude-Code-CLI?**
+> Dieses Repo braucht direkten Dateisystemzugriff, den die claude.ai/Desktop-
+> Sandbox nicht hat. Nutze stattdessen die dafür gebaute Fassung:
+> [skill-auditor-desktop](https://github.com/ki-stuff/skill-auditor-desktop).
+
 ---
 
 A Claude Code / Claude coding-agent skill that vets *other* skills before you

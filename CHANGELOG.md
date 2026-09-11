@@ -1,5 +1,12 @@
 # Changelog: skill-auditor
 
+## v2.5 — 2026-09-11 — Desktop-Edition ausgegliedert
+
+Für claude.ai/Claude Desktop gibt es jetzt eine eigene, separate Fassung: [skill-auditor-desktop](https://github.com/ki-stuff/skill-auditor-desktop). Grund für ein eigenes Repo statt eines Flags/Modus in diesem hier: claude.ai/Desktop-Skills laufen in einer isolierten Sandbox ohne Zugriff auf das lokale Dateisystem des Nutzers — diese CLI-Fassung setzt direkten Zugriff auf `~/.claude/skills/` und beliebige lokale Verzeichnisse voraus, das lässt sich nicht als Option in derselben Codebasis abbilden, ohne den Inventar-Modus (Phase 7) auf der Desktop-Seite vorzutäuschen.
+
+- **`SKILL.md`**, **`README.md`**: Verweis auf die Desktop-Fassung ergänzt, direkt am Anfang, damit Nutzer der falschen Umgebung sofort zur passenden Fassung finden.
+- Keine funktionalen Änderungen an dieser CLI-Fassung.
+
 ## v2.4 — 2026-08-12 — Scanner-Bugfix: Wortgrenzen in REJECT-Mustern
 
 Beim ersten vollen Inventar-Lauf (Phase 7, 180 Skills) fielen 5 False-Positive-🔴-REJECT-Verdikte auf (komplette hyperframes-Familie + media-use). Ursache in `scripts/audit.py`:

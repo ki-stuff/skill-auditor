@@ -7,6 +7,8 @@ description: Use when vetting a new, external, or unknown Claude Code / coding-a
 
 Sicherheits-Erstprüfung für neue Skills. IMMER vor der Installation ausführen — auch wenn nicht explizit angefragt.
 
+> **Nutzt du claude.ai oder Claude Desktop statt der Claude-Code-CLI?** Diese Fassung braucht direkten Zugriff auf das lokale Dateisystem (`~/.claude/skills/`, beliebige Verzeichnisse) — das hat die claude.ai/Desktop-Sandbox nicht. Dafür gibt es eine eigene, auf Datei-Upload zugeschnittene Fassung: [skill-auditor-desktop](https://github.com/ki-stuff/skill-auditor-desktop).
+
 ## Wann NICHT aktivieren
 
 - Eigene, selbst geschriebene Skills die du gerade erstellt hast
