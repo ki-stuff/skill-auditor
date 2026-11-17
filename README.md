@@ -3,228 +3,294 @@
 ## 🇩🇪 Kurzbeschreibung
 
 **Skills sind Prompts. Manche bringen Scripts mit. Beides kann feindlich
-sein — und beim Kopieren nach `~/.claude/skills/` prüft das niemand.**
+sein, und beim Kopieren nach `~/.claude/skills/` prüft das niemand.**
 
-Der Skill-Auditor schließt genau diese Lücke: Er prüft *andere* Skills,
-bevor du sie installierst. Übergib ihm ein Skill-Verzeichnis — von GitHub,
-ClawdHub, skills.sh oder aus unbekannter Quelle — und er führt einen
-automatischen Muster-Scan plus einen manuellen Prüf-Workflow durch: gegen
-Prompt Injection, Datenexfiltration, Rechteausweitung, Persistenz und
-Social Engineering. Ergebnis ist eine strukturierte Erstbewertung
-(🟢 / 🟡 / 🔴), kein Ersatz für ein vollständiges Security-Review.
+Der Skill-Auditor prüft *andere* Skills, bevor du sie installierst: Skill-Ordner,
+einzelne Dateien, ZIP-Archive, Agent-Plugins, npm-/Python-Pakete und
+MCP-Konfigurationen. Er liest statisch, führt nichts aus und meldet Prompt
+Injection, Datenabfluss, Rechteausweitung, Persistenz und Social Engineering.
+Ergebnis ist eine Ampel (🟢 / 🟡 / 🔴 / ⚪ nicht ausreichend geprüft) mit
+konkretem nächsten Schritt, kein Ersatz für ein vollständiges Security-Review.
 
-Seit v2.2 zusätzlich ein **Inventar-Modus** — der eigentliche Unterschied
-zu vergleichbaren Scannern: eine Übersicht über *alle* bereits installierten
-Skills, thematisch kategorisiert, mit Security-Status je Skill und als
-HTML-Dashboard.
+Eine Fassung für **Claude Code, Claude Desktop, claude.ai und Cowork**. Im
+Terminal bzw. Code-Tab gibt es zusätzlich einen **Inventar-Modus**: eine
+Übersicht über *alle* installierten Skills mit Prüfstatus je Skill, auf Wunsch
+als HTML-Dashboard.
+
+> **Neu in v2.7:** eine Fassung für alle Claude-Oberflächen (löst
+> `skill-auditor-desktop` ab). Vor dem Start prüft der Auditor Paket, Python und
+> erreichbare Skill-Ordner und bietet nur an, was dort funktioniert. Fester
+> Startdialog („Was möchtest du tun?“) und nach jedem Ergebnis „Wie geht es
+> weiter?“ mit Hilfe, jetzt auch bei Rot. Details im [CHANGELOG](CHANGELOG.md).
+>
+> **Installation:** das ZIP **unverändert** hochladen bzw. den kompletten Ordner
+> kopieren, nie nur die `SKILL.md`. Siehe [Setup](#setup).
+>
+> **Schon eine ältere Version installiert?** Bitte zuerst
+> [Upgrading from an earlier version](#upgrading-from-an-earlier-version) lesen.
+> Ältere Fassungen hatten Erkennungslücken: Bis v2.5 konnte Schadcode in
+> Code-Blöcken der `SKILL.md` ein grünes Ergebnis ergeben. Ein Update wird
+> empfohlen.
+>
+> **Fehler, Fehlalarme, Fragen:** bitte als
+> [GitHub-Issue](https://github.com/ki-stuff/skill-auditor/issues) melden. Das
+> Projekt wird freiwillig gepflegt; Antwort oder Behebung sind nicht zugesagt.
 
 > **Nicht verwechseln** mit `getsentry/skills` → `security-review` (prüft
 > eigenen Anwendungscode, nicht fremde Skills). Das Pendant dort heißt
-> `skill-scanner`. Details zur Abgrenzung: siehe
-> [How this compares](#how-this-compares-to-similar-tools).
+> `skill-scanner`. Siehe [How this compares](#how-this-compares-to-similar-tools).
 
-> **Nutzt du claude.ai oder Claude Desktop statt der Claude-Code-CLI?**
-> Dieses Repo braucht direkten Dateisystemzugriff, den die claude.ai/Desktop-
-> Sandbox nicht hat. Nutze stattdessen die dafür gebaute Fassung:
-> [skill-auditor-desktop](https://github.com/ki-stuff/skill-auditor-desktop).
+> Für Codex gibt es [codex-skill-auditor](https://github.com/ki-stuff/codex-skill-auditor).
 
 ---
 
-A Claude Code / Claude coding-agent skill that vets *other* skills before you
-install them. Point it at a skill directory (from GitHub, ClawdHub, or any
-unknown source) and it runs a structured security review: an automated
-pattern scan plus a manual review workflow covering prompt injection, data
-exfiltration, privilege escalation, persistence, and social engineering.
+A Claude skill for Claude Code, Claude Desktop, claude.ai and Cowork that vets *other* skills before you install them. Point it
+at a skill directory, a single file, an archive (ZIP/MCPB/DXT/Wheel/TAR), an
+agent plugin, an npm/Python package or an MCP configuration. It runs a static
+review, never executes the target, and combines an automated pattern scan with
+a manual review workflow covering prompt injection, data exfiltration,
+privilege escalation, persistence and social engineering.
 
-Built for one problem: skills are prompt-driven, some ship scripts, and both
-can be adversarial. This gives you a repeatable first pass before you ever
-run one.
-
-Since v2.2 it also has an **inventory mode** — the main thing that sets it
-apart from comparable scanners: instead of vetting one new skill, it surveys
-everything you already have installed and gives you a categorized,
+In Claude Code it also has an **inventory mode**: instead of vetting one new
+skill, it surveys everything you already have installed and gives you a
 security-annotated dashboard of your whole skill set.
+
+Every session starts the same way: the auditor checks its own package, the
+Python version and which skill folders are reachable, then asks one question
+(*check a skill / inventory / help with a result / what can it do*) and only
+offers what works in your environment. Every result ends with "Wie geht es
+weiter?" (what next?) and an offer to help you assess the findings.
 
 ## What it checks
 
-- **Network / exfiltration** — curl, wget, requests, fetch, and combinations
+- **Network / exfiltration**: curl, wget, requests, fetch, and combinations
   that read a secret and send it somewhere
-- **Code execution** — eval, exec, subprocess, child_process, `curl | bash`
-- **Obfuscation** — base64, hex/unicode escapes, `String.fromCharCode`
-- **Package installs / privilege escalation** — pip/npm/apt install, sudo,
+- **Code execution**: eval, exec, subprocess, child_process, `curl | bash`
+- **Obfuscation**: base64, hex/unicode escapes, `String.fromCharCode`
+- **Package installs / privilege escalation**: pip/npm/apt install, sudo,
   chmod 777, PATH tampering, cron/launch-agent persistence
-- **Prompt injection & social engineering** — "ignore previous instructions",
+- **Prompt injection & social engineering**: "ignore previous instructions",
   role reassignment, fake `<system-reminder>`/`<system>` tags, vetting-bypass
   language
-- **Persistence & stealth** — crontab, shell rc-file edits, modifying
+- **Persistence & stealth**: crontab, shell rc-file edits, modifying
   `CLAUDE.md`/`settings.json`/`MEMORY.md`, self-update mechanisms
-- **Secrets access** — `.ssh`, `.aws`, `.env`, API keys, passwords, private keys
-- **Time bombs** — date/version-gated conditional logic that behaves
-  differently on review day than later
+- **Secrets access**: `.ssh`, `.aws`, `.env`, API keys, passwords, private keys
+- **Time bombs**: date/version-gated conditional logic
+- **Package and plugin metadata**: install scripts, declared MCP servers,
+  start commands and references to files that are missing
 
-Findings are split into `CRITICAL` / `HIGH` / `MEDIUM`, plus a `REJECT` tier
-for pattern *combinations* (e.g. reading `.ssh` **and** piping it to curl in
-the same file) that auto-fail regardless of individual pattern severity.
-Patterns inside markdown code fences are skipped for most categories — a
-regex shown as a documentation example isn't a live injection.
+Findings are rated `CRITICAL` / `HIGH` / `MEDIUM` / `LOW`, plus a `REJECT` tier
+for dangerous pattern *combinations* (e.g. reading `~/.ssh` **and** sending it
+with curl within a few lines) that auto-fail regardless of individual severity.
 
-## Example output
+Context handling is deliberately conservative: a warning word such as "never"
+or "do not" in the lines before a dangerous instruction does **not** clear it,
+because attackers can add such words trivially. Hits next to warning words or
+inside code blocks of `SKILL.md` (which the agent reads as instructions) are
+lowered to yellow at most, never to green. Code blocks in README or reference
+docs are treated as documentation context, unless they contain a dangerous
+combination and another file of the skill points to them ("follow the setup in
+README.md"); then they are yellow too.
 
-Running the scanner against a directory produces a console report and a
-machine-readable `audit-result.json`:
+## Result: four colours, kept separate
 
-```
-$ python3 ~/.claude/skills/skill-auditor/scripts/audit.py ./awesome-seo-skill
+| Colour | Meaning |
+|---|---|
+| 🟢 | No obvious findings in the checked text scope. Not a certificate. |
+| 🟡 | Something needs clarification before use. |
+| 🔴 | Do not use until the finding is resolved. |
+| ⚪ | Not sufficiently checked (missing files, unsupported format, limits). |
 
-── Pattern scan ─────────────────────────────
-CRITICAL  scripts/setup.sh:14   secrets-access   ~/.ssh/id_rsa
-CRITICAL  scripts/setup.sh:15   exfiltration     curl -X POST …
-HIGH      scripts/setup.sh:3    code-execution   curl | bash
-MEDIUM    SKILL.md:88           obfuscation      base64 -d
-
-REJECT    Combination in setup.sh: secrets-access + exfiltration
-
-── Verdict ──────────────────────────────────
-🔴 Do not install. 2 critical · 1 high · 1 medium · 1 reject combination
-→ audit-result.json written
-→ Manual phases still open: provenance, content review, permission scope
-```
-
-The 🔴 verdict here is driven by the REJECT combination, not just the
-individual findings — reading a private key and piping it to curl in the
-same file auto-fails regardless of how each line would score alone.
+Risk, coverage (what was actually read) and freshness are reported separately,
+so a partial scan never turns into a green light. Yellow, grey and red results
+come with concrete next steps and their own copyable help prompt for your AI
+assistant. For red, the prompt asks to read each finding in the original and
+sort it into documentation text, purpose-bound tool behaviour or real risk; the
+red result itself always stays.
+Detected secrets are masked in reports and raw evidence lines are withheld.
 
 ## The review workflow
 
 The scan is the fast, deterministic part. The phases around it are what a
-regex can't cover, and they're where most real judgment happens:
+regex can't cover:
 
-- **Phase 0 — Provenance.** Where the skill comes from, who published it,
-  repo age, adoption. Optionally cross-check skills.sh trust badges (Socket /
-  Snyk / Gen Agent Trust Hub) as a *second* signal, never a verdict.
-- **Phase 1 — Inventory the files.** What's actually in the directory,
-  which files carry logic, which ship executable scripts.
-- **Phase 2 — Automated pattern scan.** `audit.py` over the whole tree,
-  eight categories, console report + `audit-result.json`.
-- **Phase 3 — Severity triage.** CRITICAL / HIGH / MEDIUM / REJECT, read in
-  context rather than taken at face value.
-- **Phase 4 — Content review.** Read the prompt text itself. Social
-  engineering has no greppable keywords — only phrasing that tells the agent
-  something different than it tells you.
-- **Phase 5 — Permission scope.** Does the skill actually need what it
-  touches? A text formatter with network access isn't a finding, but it's a
-  question.
-- **Phase 6 — Verdict.** 🟢 / 🟡 / 🔴 with locations, as a decision basis —
-  the decision stays with you.
-- **Phase 7 — Inventory mode.** Survey everything already installed (below).
+- **Provenance**: where the skill comes from, who published it. skills.sh trust
+  badges (Socket / Snyk / Gen Agent Trust Hub) are a second signal, never a verdict.
+- **Automated static scan**: `scripts/audit.py` over the whole input, archives
+  read directly with size, time and memory limits, nothing extracted or run.
+- **Triage in context**: read each yellow/red hit at its location.
+- **Content review**: social engineering has no greppable keywords, only
+  phrasing that tells the agent something different than it tells you.
+- **Permission scope**: does the skill actually need what it touches?
+- **Verdict**: colour, coverage and next step, as a decision basis. The
+  decision stays with you.
 
 ## How this compares to similar tools
 
-Skill-vetting tools are easy to mix up. Two clarifications:
-
 - **This is not `getsentry/skills` → `security-review`.** That skill reviews
-  *your own application code* for OWASP-style vulnerabilities (SQLi, XSS,
-  auth bugs) — it doesn't look at third-party agent skills at all. The skill
-  in that same repo that does what this tool does is `skill-scanner`
-  (`npx skills add getsentry/skills --skill skill-scanner`): automated
-  pattern scan plus LLM intent review, functionally close to Phase 2–4 here.
-- **skills.sh badges are a signal, not a verdict.** skills.sh shows
-  Socket / Snyk / Gen Agent Trust Hub badges per skill page. Useful as a
-  second opinion (see Phase 0 in `SKILL.md`), but the underlying scanners
-  have documented false positives — e.g. Snyk flagging a URL-detection regex
-  as if it were a live network call — and have been shown to miss
-  deliberately obfuscated payloads. Treat a green badge as one data point,
-  not proof; a red one is worth cross-checking against this tool's own
-  codefence filter before you act on it.
+  *your own application code* for OWASP-style vulnerabilities. The skill in
+  that repo that does what this tool does is `skill-scanner`.
+- **skills.sh badges are a second signal, not a verdict.**
 
-What technically sets this tool apart from comparable pattern scanners
-(including `skill-scanner`):
+Key properties of this tool:
 
-- **`REJECT` combination logic** — certain pattern *pairs* (e.g. reading
-  `~/.ssh` **and** piping it to curl in the same file) auto-fail regardless
-  of each pattern's individual severity, catching intent that a
-  single-pattern scanner misses.
-- **Codefence masking** — patterns inside markdown code fences are excluded
-  from most categories, so a regex shown as a documentation example doesn't
-  get flagged as live code. This is the same class of false positive that
-  trips up the skills.sh Snyk badge.
-- **Inventory mode** (below) — a dashboard of your entire installed skill
-  set, not just a one-off check before installing something new. Neither the
-  common blog-post workflow nor `skill-scanner` has this.
+- **`REJECT` combination logic**: combinations of patterns that together
+  indicate harmful intent are reported as red.
+- **Conservative context handling**: documentation examples in README/references
+  don't produce false alarms, but warning words never hide a payload.
+- **Separate coverage**: unreadable or unsupported parts are reported as grey
+  instead of silently passing.
+- **Inventory mode**: a dashboard of your entire installed skill set.
 
 ## Inventory mode
 
-Beyond vetting a single new skill, the auditor can also survey your entire
-installed skill set (manual installs under `~/.claude/skills/` plus active
-marketplace plugins) and produce a dashboard:
+Only in Claude Code (terminal or Code tab). In Claude Desktop chat, claude.ai
+and Cowork your local skill folders are not reachable, so the auditor does not
+offer it there.
 
-1. `scripts/audit.py --inventory` collects every installed skill's name,
-   description, and — if it exists — the status from a previous
-   `audit-result.json` (🟢 safe / 🟡 caution / 🔴 reject / 🔵 marketplace
-   plugin / ⚪ not yet audited). This step is deterministic, no LLM
-   judgment involved.
-2. The agent reads all descriptions and groups skills into a handful of
-   thematic categories — this part isn't pattern matching, so the scanner
-   deliberately leaves it to the agent.
-3. If any skills are unaudited, it asks whether to run a fresh audit on
-   them now, on a selection, or skip.
-4. It asks where to save the result — never writes silently.
-5. It writes a self-contained HTML dashboard: skills grouped by category,
-   a status badge per skill, no dependency on any single user's branding.
+Ask your agent for a skill inventory/overview. It scans once, groups your skills
+into topics that fit your collection, writes a one-line German summary per skill
+and renders a dashboard of tiles grouped by topic, with a traffic light per skill
+and a filter by result. Topics never change a result. Manually:
+
+```bash
+python -I -B <this-skill>/scripts/audit.py --inventory --output <dir>/inventar.json
+# write <dir>/kategorien.json: {"skill-name": {"category": "Topic", "summary": "One sentence."}}
+python -I -B <this-skill>/scripts/audit.py --render-inventory <dir>/inventar.json --categories <dir>/kategorien.json --inventory-html <dir>/skill-inventar.html
+```
+
+It covers personal and project skills plus plugin skills registered in
+`installed_plugins.json`. Registration is not a trust signal; marketplace
+plugins are scanned like everything else. A previous `audit-result.json`
+written by versions up to 2.5 is recognised by its exact format, listed as an
+exclusion and read only as unconfirmed history. Output is written only to a new
+file outside the scanned folders.
 
 ## Setup
 
-Copy `skill-auditor/` into your agent's skills directory, e.g.
-`~/.claude/skills/skill-auditor/` (or `%USERPROFILE%\.claude\skills\skill-auditor\`
-on Windows). No dependencies beyond Python 3.
+Requires **Python 3.11 or newer** in the environment where the skill runs,
+standard library only.
+
+**Claude Desktop and claude.ai:** enable code execution / file creation in the
+settings, then upload the release ZIP `skill-auditor-<version>.zip`
+**unchanged** under *Customize → Skills → Upload a skill*. An uploaded skill
+belongs to your account; in our test on 2026-11-08 it was available in Desktop
+chat, Cowork and the Claude Code tab of the desktop app.
+
+**Claude Code without the desktop app:** unzip and copy the complete
+`skill-auditor/` folder into `~/.claude/skills/skill-auditor/`
+(`%USERPROFILE%\.claude\skills\skill-auditor\` on Windows), then start a new
+session.
+
+Always install the **complete package**, never just `SKILL.md`: without
+`scripts/` and `references/` the auditor cannot scan and reports "Installation
+unvollständig". When you replace an older version, the new `SKILL.md` can be
+much shorter (2.5 → 2.6: about 230 → 30 lines); that is expected, the
+procedure lives in `references/`. Keep only **one** auditor per account or
+skills folder.
+
+## Which model?
+
+The traffic light comes from the Python scanner and does not depend on the
+model. The model decides how well results are explained, how topics for the
+inventory are chosen and how findings are assessed. Recommendation (as of
+November 2026): a current mid-size model for single checks; for the inventory
+and for assessing red findings the strongest available model with extended
+thinking (at the time of writing Claude Sonnet 5.5 or Opus 5.5). A smaller
+model never changes a result, it only explains less precisely.
+
+## Upgrading from an earlier version
+
+There is no automatic update.
+
+**From `skill-auditor-desktop` 1.x:** this package replaces it. Remove
+`skill-auditor-desktop` under *Customize → Skills*, then upload this ZIP, so
+only one auditor responds.
+
+**From 2.6:** replace the skill (upload the new ZIP or swap the folder), nothing
+else changes.
+
+**From 2.5 or older:** these versions had a detection gap: harmful
+instructions inside code blocks of a `SKILL.md` could produce a green result.
+Updating is recommended.
+
+1. **Check Python.** Run `python --version`. Version 2.6 needs **Python 3.11 or
+   newer**; older versions ran with any Python 3. With an older Python the
+   auditor only reports "Python ab 3.11 erforderlich" and does not scan.
+2. **Replace the folder, don't copy over it.** Back up
+   `~/.claude/skills/skill-auditor/` outside the skills directory, delete it,
+   then copy in the new `skill-auditor` folder. Version 2.5 used a lowercase
+   `skill.md` and kept `audit-result.json` and `skill-inventory-cache.json` in
+   that folder; copying over it would leave them behind (on macOS/Linux you
+   would end up with both `skill.md` and `SKILL.md`). Start a new Claude Code
+   session afterwards.
+3. **Old reports in your other skills.** Versions up to 2.5 wrote an
+   `audit-result.json` into every skill they checked. Version 2.6 recognises
+   these files by their exact format and no longer counts them as skill
+   content. If such an old file reported red, the inventory still shows that
+   skill as a red *warning from an earlier report (unconfirmed)*, even when the
+   current scan finds less. Some of these old verdicts came from scanner bugs
+   fixed in 2.4. Check the findings, then delete the old `audit-result.json`
+   from that skill's folder. The auditor never modifies checked skills, so it
+   does not clean these files up itself.
+4. **No more automatic report files.** 2.6 only writes a report when you ask
+   for one (`--output`, `--html`, `--inventory-html`) and never into the
+   checked folder. If a script of yours read `audit-result.json`, add
+   `--output <file>.json`.
+
+Installed via `git clone`? Run `git pull` in the clone, then delete the
+leftover `audit-result.json` and `skill-inventory-cache.json` in the auditor
+folder (they are not tracked by git).
 
 ## Usage
 
-Ask your agent to audit a skill, or just try installing an unfamiliar one —
-the skill is written to trigger proactively before any new/external skill
-gets used. It resolves its own install location and runs the scanner from
-there, e.g.:
+Ask your agent to audit a skill, upload one in a chat, or just try installing an
+unfamiliar one: the skill triggers proactively. It resolves its own install
+location, checks the environment and runs:
 
 ```bash
-python3 <wherever-you-installed-this-skill>/scripts/audit.py <skill-directory-to-check>
+python -I -B <this-skill>/scripts/audit.py --capabilities --surface <cli|desktop-chat|web|cowork>
+python -I -B <this-skill>/scripts/audit.py <path-to-check> [<more-paths> ...] --surface <surface>
 ```
 
-then follows up with the manual review phases in `SKILL.md` (provenance,
-content review, permission scope) that a regex scan alone can't cover.
+In Cowork the device scanner is deferred for now; `--surface cowork` only
+produces a "not executed" report and the auditor assesses visible text with that
+limitation stated.
 
-Batch mode: pass multiple directories to get a summary table across all of
-them.
-
-One extra output beyond the console report: **`audit-result.json`**, written
-into the scanned directory — structured findings for scripting/CI use.
-
-For a survey of everything you've already installed instead of a single
-new skill, ask the agent for a skill inventory/overview, or run:
-
-```bash
-python3 <wherever-you-installed-this-skill>/scripts/audit.py --inventory --output <path>/skill-inventory-raw.json
-```
+Useful options: `--json` (machine-readable output on stdout), `--html <new-file>`
+and `--output <new-file>.json` (save a report), `--inventory`,
+`--skills-root` / `--plugins-root` (limit the inventory), `--capabilities`
+(package, Python and reachable skill folders, plus the start options offered).
+Exit code 1 means a red result, 2 means an error or
+no scan; exit code 0 is not a security approval.
 
 ## Structure
 
 ```
 skill-auditor/
-├── SKILL.md          # the agent workflow (7 phases + manual grep patterns)
-├── README.md
-├── CHANGELOG.md
+├── SKILL.md                      # agent workflow
+├── README.md, CHANGELOG.md, LICENSE
+├── BUNDLE.json                   # file hashes of this package
+├── references/                   # review procedure, help for yellow/grey/red, Cowork guide
 └── scripts/
-    ├── audit.py                 # automated pattern scanner + inventory scan
-    └── inventory_template.html  # style reference for the inventory dashboard
+    ├── audit.py                  # entry point
+    ├── inventory_template.html   # passive dashboard template
+    └── auditor_core/             # shared static scanner core
 ```
 
 ## Limitations
 
 This is a pragmatic first pass, not a full security audit. It catches known
 patterns; it won't catch a genuinely novel obfuscation technique or a purely
-prose-based social-engineering attempt with no matching keywords. Treat a
-clean scan as "no obvious red flags," not "certified safe" — the manual
-phases in `SKILL.md` (Phase 0 provenance, Phase 4 content review) exist
-because the regex scan alone isn't enough.
+prose-based social-engineering attempt with no matching keywords. A warning
+word placed directly in the same line as a payload lowers it to yellow, not
+red. Treat a clean scan as "no obvious red flags", not "certified safe".
+
+## Reporting issues
+
+Bugs, false alarms and questions: please open a
+[GitHub issue](https://github.com/ki-stuff/skill-auditor/issues). This project
+is maintained voluntarily; no response or fix is promised.
 
 ## Changelog
 

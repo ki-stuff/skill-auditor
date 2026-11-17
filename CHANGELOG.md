@@ -1,5 +1,42 @@
 # Changelog: skill-auditor
 
+## v2.7.1 – 2026-11-17 – Neutrale Darstellung, Kontaktweg
+
+- **Neutrales Dashboard:** Kopfzeile und Fußzeile zeigen nur noch „Skill Auditor“, ohne Anbieterkennzeichen und ohne externe Links.
+- **Kernname** im JSON-Bericht jetzt `skill-auditor-core` (gemeinsamer Kern 1.2.1). Berichte älterer Fassungen mit dem bisherigen Kernnamen bleiben lesbar; sie werden wie bei jeder Kernänderung als „Kern geändert“ markiert.
+- **README:** Hinweis auf Erkennungslücken älterer Fassungen, Kontaktweg über GitHub-Issues, Vergleichsaussagen über andere Werkzeuge entfernt.
+- Scannerregeln, Ampellogik und Schutzgrenzen unverändert.
+
+## v2.7.0 – 2026-11-08 – Eine Fassung für alle Claude-Oberflächen, aktive Hilfe
+
+- **Eine Fassung statt zwei:** `skill-auditor` gilt jetzt für Claude Code, Claude Desktop, claude.ai und Cowork und löst `skill-auditor-desktop` ab. Anlass: Ein in Claude Desktop hochgeladener Skill steht im ganzen Konto zur Verfügung (Chat, Cowork, Code-Tab); zwei Fassungen hätten sich dort überschnitten.
+- **Umgebungsprüfung vor dem Start:** `--capabilities --surface <oberfläche>` misst Paketvollständigkeit (gegen `BUNDLE.json`), Python ab 3.11 und lesbare Skill-Ordner, ohne deren Inhalt aufzulisten, und nennt die passenden Startoptionen. Die Oberfläche selbst bleibt eine Selbstauskunft.
+- **Fester Startdialog** „Was möchtest du tun?“: Skill prüfen, Bestandsübersicht (nur im Terminal bzw. Code-Tab), Hilfe zu einem Ergebnis, kurz erklären.
+- **Fester Abschluss** „Wie geht es weiter?“ nach jedem Ergebnis, mit aktivem Hilfsangebot bei Gelb, Grau und Rot.
+- **Hilfe bei Rot:** eigener Hilfsprompt und Leseschritt. Fundstellen werden im Original gelesen und als Dokumentationstext, zweckgebundenes Werkzeugverhalten oder echtes Risiko eingeordnet; die rote Ampel bleibt bestehen.
+- **Installation unvollständig:** Fehlt `scripts/audit.py` oder weicht das Paket von `BUNDLE.json` ab, meldet der Auditor das sofort, statt zu improvisieren.
+- **Bestandsübersicht** und `--render-inventory` nur noch im Terminal bzw. Code-Tab (`--surface cli`). In Chat, claude.ai und Cowork wird sie nicht angeboten.
+- **Cowork:** Geräte-Scanner bleibt vorläufig zurückgestellt; die Cowork-Anleitung ist jetzt Teil dieses Pakets.
+- README: Installation je Oberfläche, Hinweis „komplettes ZIP, nie nur die SKILL.md“, Umstieg von `skill-auditor-desktop`, unverbindliche Modell-Empfehlung.
+- Scannerregeln und Ampellogik unverändert.
+
+## v2.6.0 – 2026-11-08 – Gemeinsamer Kern, sichere Auswertung
+
+- **Gemeinsamer Scanner-Kern 1.1.0** für Codex, Claude Code und Claude Desktop. Neben Skill-Ordnern werden jetzt auch Einzeldateien, ZIP/MCPB/DXT/Wheel- und TAR-Archive (direkt gelesen, nie entpackt), Agent-Plugins, npm-/Python-Pakete und MCP-Konfigurationen statisch geprüft.
+- **Getrennte Aussagen:** Risiko, Prüfabdeckung (was wurde tatsächlich gelesen) und Aktualität werden einzeln ausgewiesen. Grau bedeutet „nicht ausreichend geprüft“ und wird nie zu Grün.
+- **Konkrete nächste Schritte** und ein kopierbarer Hilfsprompt für gelbe und graue Ergebnisse.
+- **HTML-Auswertung** mit Überblick, Kennzahlen, „Hier solltest du zuerst hinsehen“ und aufklappbaren technischen Details. Passives HTML ohne Skripte und ohne externe Ressourcen.
+- **Schutz beim Lesen:** Größen-, Zeit- und Speichergrenzen, keine Links/Reparse-Punkte, keine Ausführung von Prüfobjektcode. Erkannte Geheimwerte werden in Berichten maskiert, Rohbelege zurückgehalten.
+- **Keine automatische Ablage mehr im geprüften Skill:** Berichte entstehen nur noch an einem ausdrücklich gewählten neuen Ziel (`--output`, `--html`, `--inventory-html`).
+- **Warnwörter sind kein Freifahrtschein:** Steht vor einer gefährlichen Anweisung ein Satz mit „never“, „avoid“ oder „do not“, bleibt eine gefährliche Musterkombination ein automatisches Rot. Treffer neben Warnwörtern oder in Codeblöcken der SKILL.md werden höchstens auf Gelb gesenkt, nie auf Grün. Codeblöcke in README und Referenzen bleiben reiner Dokumentationskontext.
+- **Altberichte:** Eine `audit-result.json` früherer Fassungen im Skill-Ordner wird am exakten Format erkannt, als Ausnahme ausgewiesen und nicht mehr als Skill-Inhalt gescannt. Vorher verursachten ihre alten Fundstellen-Auszüge falsche Treffer und graue Abdeckung. Verweist eine andere Datei des Skills auf die `audit-result.json`, wird sie trotzdem vollständig geprüft, damit sich darin keine Anweisung verstecken lässt.
+- **Verweise auf Codebeispiele:** Eine gefährliche Musterkombination in einem Codeblock von README oder Referenzdateien wird gelb, sobald eine andere Datei auf diese Datei verweist (z. B. „folge dem Setup in README.md“). Ohne Verweis bleibt sie Dokumentationskontext. In der SKILL.md selbst ist eine solche Kombination immer mindestens gelb.
+- **Inventar robuster:** Die Maskierung arbeitet pro Skill. Erreicht ein einzelner Skill die Grenze, wird nur dieser Eintrag zurückgehalten, statt das ganze Inventar abzubrechen. Das Ausgabeziel wird vor dem Scan geprüft, Fehlermeldungen nennen den Grund im Klartext.
+- Python ab 3.11 erforderlich, nur Standardbibliothek, keine automatische Nachinstallation.
+- **Bestandsübersicht als Themen-Kacheln:** Das Inventar-Dashboard zeigt die Skills wieder als Kacheln, gruppiert nach Themen, mit deutscher Kurzbeschreibung und Ampel, dazu ein Filter nach Ergebnis (ohne JavaScript). Die Themen vergibt die KI passend zum jeweiligen Bestand (`--categories`); sie ändern nie die Ampel. `--render-inventory` stellt eine gespeicherte Bestandsdatei ohne erneuten Scan dar.
+- **Claude-Code-Inventar:** persönliche und projektbezogene Skills sowie registrierte Plugin-Skills (`installed_plugins.json`). Registrierung ist kein Vertrauensnachweis; Marketplace-Plugins werden genauso geprüft.
+- **Geändert gegenüber v2.5:** `audit-result.json` wird nicht mehr in den geprüften Ordner geschrieben. Das Inventar ordnet frühere Berichte nur lesend als unbestätigte Historie zu.
+
 ## v2.5 — 2026-09-11 — Desktop-Edition ausgegliedert
 
 Für claude.ai/Claude Desktop gibt es jetzt eine eigene, separate Fassung: [skill-auditor-desktop](https://github.com/ki-stuff/skill-auditor-desktop). Grund für ein eigenes Repo statt eines Flags/Modus in diesem hier: claude.ai/Desktop-Skills laufen in einer isolierten Sandbox ohne Zugriff auf das lokale Dateisystem des Nutzers — diese CLI-Fassung setzt direkten Zugriff auf `~/.claude/skills/` und beliebige lokale Verzeichnisse voraus, das lässt sich nicht als Option in derselben Codebasis abbilden, ohne den Inventar-Modus (Phase 7) auf der Desktop-Seite vorzutäuschen.
@@ -25,8 +62,8 @@ Verifiziert gegen die 5 ursprünglich betroffenen Skills (3 vollständig behoben
 Abgleich gegen den aktuellen Stand von skills.sh (Vercel) und getsentry/skills; Ergebnis in drei Änderungen.
 
 - **`SKILL.md`**: `description` präzisiert — "skill" jetzt explizit als "Claude Code / coding-agent skill (SKILL.md-based package)" gefasst (grenzt gegen generischen Sprachgebrauch und den `code-review`-Skill ab), skills.sh und `npx skills add` als bekannte Quellen ergänzt.
-- **`SKILL.md`**: Phase 0 um optionalen skills.sh-Badge-Check erweitert (Socket/Snyk/Gen Agent Trust Hub als Zusatzsignal, ausdrücklich keine alleinige Entscheidungsgrundlage — bekannte False-Positive-Muster bei Snyk, Scanner laut Trail-of-Bits-Research schon umgangen). Bei Snyk-Fail: erst eigenen Codefence-Filter gegenprüfen. Neues Report-Feld "Zusatzsignal skills.sh" in Phase 6.
-- **`README.md`**: neuer Abschnitt "How this compares to similar tools" — Abgrenzung zu `getsentry/skills` → `security-review` (häufige Verwechslung; das eigentliche Pendant dort heißt `skill-scanner`), REJECT-Kombinationslogik und Codefence-Masking als technische Differenzierung gegenüber reinen Pattern-Matchern, Inventar-Modus als Hauptunterschied stärker herausgestellt.
+- **`SKILL.md`**: Phase 0 um optionalen skills.sh-Badge-Check erweitert (Socket/Snyk/Gen Agent Trust Hub als Zusatzsignal, ausdrücklich keine alleinige Entscheidungsgrundlage). Bei einem auffälligen Badge: erst eigenen Codefence-Filter gegenprüfen. Neues Report-Feld "Zusatzsignal skills.sh" in Phase 6.
+- **`README.md`**: neuer Abschnitt "How this compares to similar tools" — Abgrenzung zu `getsentry/skills` → `security-review` (häufige Verwechslung; das eigentliche Pendant dort heißt `skill-scanner`), REJECT-Kombinationslogik, Codefence-Masking und Inventar-Modus beschrieben.
 
 ## v2.2 — 2026-07-13 — Inventar-Modus
 
